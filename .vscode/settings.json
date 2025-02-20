@@ -1,0 +1,6 @@
+{
+    "files.exclude": {
+        "js_build": true
+    },
+    "liveServer.settings.port": 5501
+}

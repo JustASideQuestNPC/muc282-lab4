@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "noImplicitAny": true,
+    "outDir": "./js_build",
+    "preserveConstEnums": true,
+    "removeComments": true,
+    // "rootDir": "./src/",
+    "sourceMap": true,
+    "target": "ESNext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true
+  }
+}
