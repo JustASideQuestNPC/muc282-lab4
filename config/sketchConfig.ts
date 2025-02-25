@@ -1,7 +1,7 @@
 /**
  * Configs for the sketch environment.
  */
-export const SKETCH_CONFIG = {
+const SKETCH_CONFIG = {
     /**
      * Width of the canvas, in pixels.
      */
@@ -16,3 +16,4 @@ export const SKETCH_CONFIG = {
      */
     DISABLE_RIGHT_CLICK_MENU: true
 };
+export default SKETCH_CONFIG;

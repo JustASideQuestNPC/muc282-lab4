@@ -5,11 +5,12 @@
  */
 
 // sketch.json holds configurations for the canvas size and a few input things
-import { SKETCH_CONFIG } from "../config/sketchConfig.js";
-import { addCanvasListeners } from "./listener-generator.js";
+import SKETCH_CONFIG from "../config/sketchConfig.js";
 import Input from "./engine/input.js";
+import { addCanvasListeners } from "./listener-generator.js";
 
 const gamepad = new Input.Gamepad();
+const input = new Input.ActionManager();
 
 const sketch = (p5: p5) => {
     p5.setup = () => {
@@ -54,19 +55,16 @@ const sketch = (p5: p5) => {
     };
 
     function keyPressed(event: KeyboardEvent) {
-        console.log(event);
+        console.log(`Pressed ${event}`);
     }
 
     function keyReleased(event: KeyboardEvent) {
-        console.log(event);
     }
 
     function mousePressed(event: MouseEvent) {
-        console.log(event);
     }
     
     function mouseReleased(event: MouseEvent) {
-        console.log(event);
     }
 };
 

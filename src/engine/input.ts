@@ -1,4 +1,4 @@
-import Vector2D from "../math/vector";
+import Vector2D from "../math/vector.js";
 
 enum GpButton {
     /** X on Playstation controllers. */
@@ -57,6 +57,18 @@ enum GpAxis {
 }
 
 enum GpThumbstick { LEFT, RIGHT }
+
+/**
+ * A single input action.
+ */
+interface InputAction {
+    active: boolean,
+    keys: string[],
+    buttons: GpButton[],
+    update: ()=>void,
+    wasActive: boolean,
+    bufferDuration: number
+}
 
 /**
  * Applies deadzone to an analog value. Both the input and output are between -1 and 1.
@@ -260,10 +272,44 @@ class GamepadManager {
     get connected() { return this.gamepad !== null; }
 }
 
+/**
+ * An action-based system for managing inputs.
+ */
+class InputManager {
+    /**
+     * All active actions.
+     */
+    private actions: {[key: string]: InputAction};
+
+    /**
+     * How long press-type inputs can be buffered for, in seconds.
+     */
+    bufferDuration: number = 0.03;
+
+    /**
+     * Adds an action to the manager.
+     * @param name The name of the action; used to access it using `isActive()`.
+     * @param keys All keyboard keys or mouse buttons that can activate the action. Actions must
+     *      have at least one keyboard key, mouse button, or gamepad button assigned to them.
+     * @param buttons All gamepad buttons that can activate the action. Actions must have at least
+     *      one keyboard key, mouse button, or gamepad button assigned to them.
+     * @param type The type of the action, either `"press"` or `"hold"`. A `"press"` action is
+     *      active once when its key is initially pressed, and then deactivates until the key is
+     *      released and re-pressed. A `"hold"` action is active whenever its keys are pressed. The
+     *      default action type is `"hold"`,
+     */
+    addAction({ name, keys=[], buttons=[], type="hold" }: { name: string, keys?: string[],
+              buttons?: (string|GpButton)[], type?: "press"|"hold" }) {}
+}
+
 const Input = {
     /**
      * Manages input for a gamepad.
      */
-    Gamepad: GamepadManager
+    Gamepad: GamepadManager,
+    /**
+     * An action-based system for managing inputs.
+     */
+    ActionManager: InputManager
 };
 export default Input;
