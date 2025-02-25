@@ -1,3 +1,5 @@
+import Vector2D from "../math/vector";
+
 enum GpButton {
     /** X on Playstation controllers. */
     A,
@@ -182,8 +184,8 @@ class GamepadManager {
      * Returns the value of an analog axis. Trigger values are between 0 and 1, where 1 is a full
      * pull. Thumbstick axes are between -1 and 1, where -1 is all the way left/up and 1 is all the
      * way right/down. If the gamepad is disconnected, this method always returns 0.
-     * @param rawValue If true, deadzone is not applied to thumbstick values. Has no effect on
-     *      triggers (because they never have deadzone).
+     * @param [rawValue=false] If true, deadzone is not applied to thumbstick values. Has no effect
+     *      on triggers (because they never have deadzone). Defaults to false.
      */
     axisValue(axis: GpAxis, rawValue: boolean=false): number {
         if (this.gamepad === null) { return 0; }
@@ -216,6 +218,34 @@ class GamepadManager {
             
             return rawValue ? value : applyDeadzone(value, this.innerDeadzone, this.outerDeadzone);
         }
+    }
+
+    /**
+     * Returns the position of a thumbstick. If the gamepad is disconnected, this method always
+     * returns a zero vector.
+     * @param [rawValue=false] If true, deadzone is not applied to the position. Defaults to false.
+     */
+    stickPos(stick: GpThumbstick, rawValue: boolean=false): Vector2D {
+        if (stick === GpThumbstick.LEFT) {
+            return new Vector2D(
+                this.axisValue(GpAxis.LEFT_STICK_X, rawValue),
+                this.axisValue(GpAxis.LEFT_STICK_Y, rawValue)
+            );
+        }
+        else {
+            return new Vector2D(
+                this.axisValue(GpAxis.RIGHT_STICK_X, rawValue),
+                this.axisValue(GpAxis.RIGHT_STICK_Y, rawValue)
+            );
+        }
+    }
+
+    /**
+     * Returns a normalized (length 1) vector with the position of a thumbstick. If the gamepad is
+     * disconnected, this method always returns a zero vector.
+     */
+    stickVector(stick: GpThumbstick): Vector2D {
+        return this.stickPos(stick).normalize();
     }
 
     /**
