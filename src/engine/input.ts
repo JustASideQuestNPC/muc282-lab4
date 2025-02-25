@@ -99,6 +99,11 @@ class GamepadManager {
     private _padIndex: number;
 
     /**
+     * Whether triggers should be read from the gamepad's axes or its buttons.
+     */
+    private triggersAreAxes: boolean;
+
+    /**
      * Inner deadzone for analog sticks - if the raw value is closer to 0 than this, it will be
      * snapped to 0.
      */
@@ -117,30 +122,36 @@ class GamepadManager {
     constructor(padIndex: number=-1) {
         this._padIndex = padIndex;
 
-        // add connection event based on which pad we're using
+        // add the correct method to poll input each from
         if (padIndex !== -1) {
-            window.addEventListener("gamepadconnected", (event: GamepadEvent) => {
-                // only connect if this is our gamepad
-                if (event.gamepad.index === this.padIndex) {
-                    this.gamepad = event.gamepad;
+            const pollInput = () => {
+                this.gamepad = navigator.getGamepads()[this._padIndex];
+                // some browsers store the triggers using the axes, but other ones store them using
+                // buttons array and this is the only good way i've found to get around that
+                if (this.gamepad !== null && this.triggersAreAxes === undefined) {
+                    this.triggersAreAxes = this.gamepad.axes[4] != null;
+                    console.log(
+                        `[GamepadManager] Triggers are ${this.triggersAreAxes ? "axes" : "buttons"}`
+                    );
                 }
-            });
+                // repeat every frame
+                window.requestAnimationFrame(pollInput);
+            };
+            window.requestAnimationFrame(pollInput);
         }
         else {
-            window.addEventListener("gamepadconnected", (event: GamepadEvent) => {
-                // connect to any gamepad if we aren't already connected to one
-                if (this.gamepad === null) {
-                    this.gamepad = event.gamepad;
+            const pollInput = () => {
+                this.gamepad = navigator.getGamepads().find((g) => g !== null) ?? null;
+                if (this.gamepad !== null && this.triggersAreAxes === undefined) {
+                    this.triggersAreAxes = this.gamepad.axes[4] != null;
+                    console.log(
+                        `[GamepadManager] Triggers are ${this.triggersAreAxes ? "axes" : "buttons"}`
+                    );
                 }
-            });
+                window.requestAnimationFrame(pollInput);
+            };
+            window.requestAnimationFrame(pollInput);
         }
-
-        // the disconnect event is always the same
-        window.addEventListener("gamepaddisconnected", (event: GamepadEvent) => {
-            if (event.gamepad.index === this.gamepad.index) {
-                this.gamepad = null;
-            }
-        });
     }
 
     /**
@@ -153,10 +164,12 @@ class GamepadManager {
         // full pull triggers are special cases - the entry in the button array is true whenever the
         // triggers have been touched at all, so we need to check their axes instead
         if (button === GpButton.LEFT_TRIGGER_FULL_PULL) {
-            return this.gamepad.axes[4] === 1;
+            return (this.triggersAreAxes ? this.gamepad.axes[4] === 1 :
+                                           this.gamepad.buttons[6].value === 1);
         }
         else if (button === GpButton.RIGHT_TRIGGER_FULL_PULL) {
-            return this.gamepad.axes[5] === 1;
+            return (this.triggersAreAxes ? this.gamepad.axes[5] === 1 :
+                                           this.gamepad.buttons[7].value === 1);
         }
         // otherwise, the enum is laid out so that each button maps directly to its location in the
         // button array
@@ -176,14 +189,25 @@ class GamepadManager {
         if (this.gamepad === null) { return 0; }
 
         if (axis === GpAxis.LEFT_TRIGGER) {
-            // apply trigger fix if necessary
-
-            // triggers are stored between -1 and 1, but it's usually makes math easier if they're
-            // mapped to between 0 and 1
-            return (this.gamepad.axes[4] + 1) / 2;
+            if (this.triggersAreAxes) {
+                // TODO: fix bug where trigger values are initially 0.5 until updated
+                // map value to between 0 and 1
+                return (this.gamepad.axes[4] + 1) / 2;
+            }
+            else {
+                // the button value is already between 0 and 1
+                return this.gamepad.buttons[6].value;
+            }
         }
         else if (axis === GpAxis.RIGHT_TRIGGER) {
-            return (this.gamepad.axes[5] + 1) / 2;
+            if (this.triggersAreAxes) {
+                // map value to between 0 and 1
+                return (this.gamepad.axes[5] + 1) / 2;
+            }
+            else {
+                // the button value is already between 0 and 1
+                return this.gamepad.buttons[7].value;
+            }
         }
         else {
             // stick axes map directly to their location in the axes array (triggers also do, but we
