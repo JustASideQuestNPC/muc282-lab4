@@ -6,11 +6,10 @@
 
 // sketch.json holds configurations for the canvas size and a few input things
 import SKETCH_CONFIG from "../config/sketchConfig.js";
-import Input from "./engine/input.js";
 import { addCanvasListeners } from "./listener-generator.js";
+import { GamepadManager, InputManager } from "./engine/input.js";
 
-const gamepad = new Input.Gamepad();
-const input = new Input.ActionManager();
+let gamepad: GamepadManager, input: InputManager;
 
 const sketch = (p5: p5) => {
     p5.setup = () => {
@@ -24,6 +23,9 @@ const sketch = (p5: p5) => {
             mousePressed: mousePressed,
             mouseReleased: mouseReleased
         });
+
+        gamepad = new GamepadManager();
+        input = new InputManager(document.getElementById(canvas.id()), gamepad);
     };
 
     p5.draw = () => {
@@ -34,24 +36,24 @@ const sketch = (p5: p5) => {
         p5.noStroke();
         p5.fill("#000000");
         
-        let buttonText: string = `Gamepad ${gamepad.connected ? "connected" : "disconnected"}\n`;
-        buttonText += "Buttons:\n";
-        for (const [i, button] of Object.entries(Input.Gamepad.Button)) {
-            if (Number.isNaN(Number(i))) { continue; }
-            buttonText += `${button}: ${gamepad.buttonPressed(Number(i))}\n`;
-        }
-        p5.text(buttonText, 5, 5);
+        // let buttonText: string = `Gamepad ${gamepad.connected ? "connected" : "disconnected"}\n`;
+        // buttonText += "Buttons:\n";
+        // for (const [i, button] of Object.entries(Input.Gamepad.Button)) {
+        //     if (Number.isNaN(Number(i))) { continue; }
+        //     buttonText += `${button}: ${gamepad.buttonPressed(Number(i))}\n`;
+        // }
+        // p5.text(buttonText, 5, 5);
 
-        let axisText: string = "\nAxes:\n";
-        for (const [i, axis] of Object.entries(Input.Gamepad.Axis)) {
-            if (Number.isNaN(Number(i))) { continue; }
-            axisText += `${axis}: ${gamepad.axisValue(Number(i)).toFixed(3)}\n`;
-            // add non-deadzone entries for stick axes
-            if (Number(i) < 4) {
-                axisText += `${axis} raw: ${gamepad.axisValue(Number(i), true).toFixed(3)}\n`;
-            }
-        }
-        p5.text(axisText, 300, 5);
+        // let axisText: string = "\nAxes:\n";
+        // for (const [i, axis] of Object.entries(Input.Gamepad.Axis)) {
+        //     if (Number.isNaN(Number(i))) { continue; }
+        //     axisText += `${axis}: ${gamepad.axisValue(Number(i)).toFixed(3)}\n`;
+        //     // add non-deadzone entries for stick axes
+        //     if (Number(i) < 4) {
+        //         axisText += `${axis} raw: ${gamepad.axisValue(Number(i), true).toFixed(3)}\n`;
+        //     }
+        // }
+        // p5.text(axisText, 300, 5);
     };
 
     function keyPressed(event: KeyboardEvent) {

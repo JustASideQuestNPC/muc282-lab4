@@ -1,6 +1,19 @@
 import Vector2D from "../math/vector.js";
+import { InvalidArgumentError } from "../utils.js";
 
-enum GpButton {
+/**
+ * A single input action.
+ */
+interface InputAction {
+    active: boolean,
+    keys: string[],
+    buttons: GpButton[],
+    update: (pressed: boolean, dt: number)=>void,
+    wasActive: boolean,
+    bufferDuration: number
+}
+
+export enum GpButton {
     /** X on Playstation controllers. */
     A,
     /** Circle on Playstation controllers. */
@@ -47,7 +60,7 @@ enum GpButton {
     RIGHT_TRIGGER_FULL_PULL
 }
 
-enum GpAxis {
+export enum GpAxis {
     LEFT_STICK_X,
     LEFT_STICK_Y,
     RIGHT_STICK_X,
@@ -56,19 +69,37 @@ enum GpAxis {
     RIGHT_TRIGGER,
 }
 
-enum GpThumbstick { LEFT, RIGHT }
+export enum GpThumbstick { LEFT, RIGHT }
+
+// lookup table for gamepad button names
+const GAMEPAD_BUTTON_LOOKUP: {[key: string]: GpButton} = {
+    "a": GpButton.A,
+    "b": GpButton.B,
+    "x": GpButton.X,
+    "y": GpButton.Y,
+    "left bumper": GpButton.LEFT_BUMPER,
+    "right bumper": GpButton.RIGHT_BUMPER,
+    "left trigger": GpButton.LEFT_TRIGGER,
+    "right trigger": GpButton.RIGHT_TRIGGER,
+    "share": GpButton.SHARE,
+    "options": GpButton.OPTIONS,
+    "left stick click": GpButton.LEFT_STICK_CLICK,
+    "right stick click": GpButton.RIGHT_STICK_CLICK,
+    "dpad up": GpButton.DPAD_UP,
+    "dpad down": GpButton.DPAD_DOWN,
+    "dpad left": GpButton.DPAD_LEFT,
+    "dpad right": GpButton.DPAD_RIGHT,
+    "home": GpButton.HOME,
+    "left trigger full pull": GpButton.LEFT_TRIGGER_FULL_PULL,
+    "right trigger full pull": GpButton.RIGHT_TRIGGER_FULL_PULL
+};
 
 /**
- * A single input action.
+ * Lookup table to map some key names to more intuitive ones.
  */
-interface InputAction {
-    active: boolean,
-    keys: string[],
-    buttons: GpButton[],
-    update: ()=>void,
-    wasActive: boolean,
-    bufferDuration: number
-}
+const ALTERNATE_KEY_NAMES: {[key: string]: string} = {
+
+};
 
 /**
  * Applies deadzone to an analog value. Both the input and output are between -1 and 1.
@@ -85,10 +116,11 @@ function applyDeadzone(value: number, inner: number, outer: number): number {
     }
 }
 
+
 /**
  * Manages input for a gamepad.
  */
-class GamepadManager {
+export class GamepadManager {
     // mildly cursed typescript to make the enums into properties
     /**
      * A button on the gamepad. Uses Xbox button names.
@@ -136,7 +168,7 @@ class GamepadManager {
     constructor(padIndex: number=-1) {
         this._padIndex = padIndex;
 
-        // add the correct method to poll input each from
+        // add the correct method to poll input from the gamepad
         if (padIndex !== -1) {
             const pollInput = () => {
                 this.gamepad = navigator.getGamepads()[this._padIndex];
@@ -275,16 +307,90 @@ class GamepadManager {
 /**
  * An action-based system for managing inputs.
  */
-class InputManager {
+export class InputManager {
     /**
      * All active actions.
      */
     private actions: {[key: string]: InputAction};
 
     /**
+     * The state of every keyboard key and mouse button
+     */
+    private keyStates: {[key: string]: boolean};
+
+    /**
      * How long press-type inputs can be buffered for, in seconds.
      */
     bufferDuration: number = 0.03;
+
+    /**
+     * Timestamp of the previous update; used for updating buffers.
+     */
+    prevTimestamp: number;
+
+    /**
+     * The gamepad to use for polling input.
+     */
+    gamepad: GamepadManager | null = null;
+
+    constructor(canvas: HTMLElement, gamepad: GamepadManager=null) {
+        // attach input listeners to the canvas
+        canvas.addEventListener("keydown", (event) => {
+            console.log(event.code);
+        });
+        canvas.addEventListener("keyup", (event) => {
+
+        });
+        canvas.addEventListener("mousedown", (event) => {
+            if (event.button === 0) {
+                this.keyStates["left click"] = true;
+            }
+            else if (event.button === 1) {
+                this.keyStates["middle click"] = true;
+            }
+            else if (event.button === 2) {
+                this.keyStates["right click"] = true;
+            }
+        });
+        canvas.addEventListener("mouseup", (event) => {
+            if (event.button === 0) {
+                this.keyStates["left click"] = false;
+            }
+            else if (event.button === 1) {
+                this.keyStates["middle click"] = false;
+            }
+            else if (event.button === 2) {
+                this.keyStates["right click"] = false;
+            }
+        });
+
+        this.gamepad = gamepad;
+
+        // start the counter
+        this.prevTimestamp = window.performance.now();
+        // setup a callback to update everything
+        const updateCallback = () => {
+            const currentTimestamp = window.performance.now();
+            const dt = currentTimestamp - this.prevTimestamp;
+            this.prevTimestamp = currentTimestamp;
+
+            // update all actions
+            for (const action of Object.values(this.actions)) {
+                // figure out whether the action is pressed
+                let actionPressed = action.keys.some((k) => this.keyStates[k]);
+                // check gamepad buttons if the gamepad is connected
+                if (!actionPressed && this.gamepad !== null && this.gamepad.connected) {
+                    actionPressed = action.buttons.some((b) => this.gamepad.buttonPressed(b));
+                }
+
+                action.update(actionPressed, dt);
+            }
+
+            // run every frame
+            window.requestAnimationFrame(updateCallback);
+        };
+        window.requestAnimationFrame(updateCallback);
+    }
 
     /**
      * Adds an action to the manager.
@@ -299,17 +405,68 @@ class InputManager {
      *      default action type is `"hold"`,
      */
     addAction({ name, keys=[], buttons=[], type="hold" }: { name: string, keys?: string[],
-              buttons?: (string|GpButton)[], type?: "press"|"hold" }) {}
-}
+              buttons?: (string|GpButton)[], type?: "press"|"hold" }) {
+        // make sure the action has something assigned to it
+        if (keys.length === 0 && buttons.length === 0) {
+            throw new InvalidArgumentError(
+                `[InputManager] The action ${name} has no keys or buttons assigned to it.`
+            );
+        }
 
-const Input = {
+        const action: InputAction = {
+            active: false,
+            keys: keys.map((k) => k.toLowerCase()),
+            // convert strings to gamepad buttons
+            buttons: buttons.map((b) => typeof b === "string" ? GAMEPAD_BUTTON_LOOKUP[b] : b),
+            // we'll set this up a bit later
+            update: null,
+            wasActive: false,
+            bufferDuration: 0
+        };
+
+        // set update method based on action type
+        if (type === "hold") {
+            action.update = (pressed: boolean, dt: number) => {
+                action.active = pressed;
+            };
+        }
+        else {
+            action.update = (pressed: boolean, dt: number) => {
+                if (pressed) {
+                    if (action.bufferDuration >= 0) {
+                        action.bufferDuration -= dt;
+                        action.active = true;
+                    }
+                    else if (action.wasActive) {
+                        action.active = false;
+                    }
+                    else {
+                        action.active = true;
+                        action.wasActive = true;
+                        action.bufferDuration = this.bufferDuration;
+                    }
+                }
+                else {
+                    action.wasActive = false;
+                    action.active = false;
+                }
+            };
+        }
+
+        this.actions[name] = action;
+    }
+
     /**
-     * Manages input for a gamepad.
+     * Returns whether the named action is active. Throws an `InvalidArgumentError` if the action
+     * does not exist.
      */
-    Gamepad: GamepadManager,
-    /**
-     * An action-based system for managing inputs.
-     */
-    ActionManager: InputManager
-};
-export default Input;
+    isActive(name: string): boolean {
+        if (Object.hasOwn(this.actions, name)) {
+            const active = this.actions[name].active;
+            // clear the buffers for press inputs to prevent them from activating multiple times
+            this.actions[name].bufferDuration = 0;
+            return active;
+        }
+        throw new InvalidArgumentError(`[InputManager] The action "${name}" does not exist.`);
+    }
+}
