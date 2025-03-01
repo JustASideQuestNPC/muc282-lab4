@@ -7,13 +7,13 @@ import { InvalidArgumentError } from "../utils.js";
 interface InputAction {
     active: boolean,
     keys: string[],
-    buttons: GpButton[],
+    buttons: GamepadButton[],
     update: (pressed: boolean, dt: number)=>void,
     wasActive: boolean,
     bufferDuration: number
 }
 
-export enum GpButton {
+export enum GamepadButton {
     /** X on Playstation controllers. */
     A,
     /** Circle on Playstation controllers. */
@@ -60,7 +60,7 @@ export enum GpButton {
     RIGHT_TRIGGER_FULL_PULL
 }
 
-export enum GpAxis {
+export enum GamepadAxis {
     LEFT_STICK_X,
     LEFT_STICK_Y,
     RIGHT_STICK_X,
@@ -69,36 +69,76 @@ export enum GpAxis {
     RIGHT_TRIGGER,
 }
 
-export enum GpThumbstick { LEFT, RIGHT }
+export enum GamepadThumbstick { LEFT, RIGHT }
 
 // lookup table for gamepad button names
-const GAMEPAD_BUTTON_LOOKUP: {[key: string]: GpButton} = {
-    "a": GpButton.A,
-    "b": GpButton.B,
-    "x": GpButton.X,
-    "y": GpButton.Y,
-    "left bumper": GpButton.LEFT_BUMPER,
-    "right bumper": GpButton.RIGHT_BUMPER,
-    "left trigger": GpButton.LEFT_TRIGGER,
-    "right trigger": GpButton.RIGHT_TRIGGER,
-    "share": GpButton.SHARE,
-    "options": GpButton.OPTIONS,
-    "left stick click": GpButton.LEFT_STICK_CLICK,
-    "right stick click": GpButton.RIGHT_STICK_CLICK,
-    "dpad up": GpButton.DPAD_UP,
-    "dpad down": GpButton.DPAD_DOWN,
-    "dpad left": GpButton.DPAD_LEFT,
-    "dpad right": GpButton.DPAD_RIGHT,
-    "home": GpButton.HOME,
-    "left trigger full pull": GpButton.LEFT_TRIGGER_FULL_PULL,
-    "right trigger full pull": GpButton.RIGHT_TRIGGER_FULL_PULL
+const GAMEPAD_BUTTON_LOOKUP: {[key: string]: GamepadButton} = {
+    "a": GamepadButton.A,
+    "b": GamepadButton.B,
+    "x": GamepadButton.X,
+    "y": GamepadButton.Y,
+    "left bumper": GamepadButton.LEFT_BUMPER,
+    "right bumper": GamepadButton.RIGHT_BUMPER,
+    "left trigger": GamepadButton.LEFT_TRIGGER,
+    "right trigger": GamepadButton.RIGHT_TRIGGER,
+    "share": GamepadButton.SHARE,
+    "options": GamepadButton.OPTIONS,
+    "left stick click": GamepadButton.LEFT_STICK_CLICK,
+    "right stick click": GamepadButton.RIGHT_STICK_CLICK,
+    "dpad up": GamepadButton.DPAD_UP,
+    "dpad down": GamepadButton.DPAD_DOWN,
+    "dpad left": GamepadButton.DPAD_LEFT,
+    "dpad right": GamepadButton.DPAD_RIGHT,
+    "home": GamepadButton.HOME,
+    "left trigger full pull": GamepadButton.LEFT_TRIGGER_FULL_PULL,
+    "right trigger full pull": GamepadButton.RIGHT_TRIGGER_FULL_PULL
 };
 
-/**
- * Lookup table to map some key names to more intuitive ones.
- */
+// lookup table to map some key names to more intuitive ones
 const ALTERNATE_KEY_NAMES: {[key: string]: string} = {
-
+    "Space": " ",
+    "Backquote": "`",
+    "Minus": "-",
+    "Equal": "=",
+    "BracketLeft": "[",
+    "BracketRight": "]",
+    "Backslash": "\\",
+    "Semicolon": ";",
+    "Quote": "'",
+    "Comma": ",",
+    "Period": ".",
+    "Slash": "/",
+    "ShiftLeft": "left shift",
+    "ShiftRight": "right shift",
+    "ControlLeft": "left control",
+    "ControlRight": "right control",
+    "AltLeft": "left alt",
+    "AltRight": "right alt",
+    "CapsLock": "caps lock",
+    "NumLock": "num lock",
+    "ScrollLock": "scroll lock",
+    "PageUp": "page up",
+    "PageDown": "page down",
+    "ArrowUp": "up",
+    "ArrowDown": "down",
+    "ArrowLeft": "left",
+    "ArrowRight": "right",
+    "Numpad0": "numpad 0",
+    "Numpad1": "numpad 1",
+    "Numpad2": "numpad 2",
+    "Numpad3": "numpad 3",
+    "Numpad4": "numpad 4",
+    "Numpad5": "numpad 5",
+    "Numpad6": "numpad 6",
+    "Numpad7": "numpad 7",
+    "Numpad8": "numpad 8",
+    "Numpad9": "numpad 9",
+    "NumpadAdd": "numpad +",
+    "NumpadSubtract": "numpad -",
+    "NumpadMultiply": "numpad *",
+    "NumpadDivide": "numpad /",
+    "NumpadEnter": "numpad enter",
+    "NumpadDecimal": "numpad ."
 };
 
 /**
@@ -116,7 +156,6 @@ function applyDeadzone(value: number, inner: number, outer: number): number {
     }
 }
 
-
 /**
  * Manages input for a gamepad.
  */
@@ -125,15 +164,15 @@ export class GamepadManager {
     /**
      * A button on the gamepad. Uses Xbox button names.
      */
-    static readonly Button = GpButton;
+    static readonly Button = GamepadButton;
     /**
      * An analog axis on the gamepad.
      */
-    static readonly Axis = GpAxis;
+    static readonly Axis = GamepadAxis;
     /**
      * A thumbstick on the gamepad.
      */
-    static readonly Thumbstick = GpThumbstick;
+    static readonly Thumbstick = GamepadThumbstick;
 
     /** The JS Gamepad API object. */
     private gamepad: Gamepad = null;
@@ -204,16 +243,16 @@ export class GamepadManager {
      * Returns whether a button on the gamepad is pressed. If the gamepad is disconnected, this
      * method always returns false.
      */
-    buttonPressed(button: GpButton): boolean {
+    buttonPressed(button: GamepadButton): boolean {
         if (this.gamepad === null) { return false; }
 
         // full pull triggers are special cases - the entry in the button array is true whenever the
         // triggers have been touched at all, so we need to check their axes instead
-        if (button === GpButton.LEFT_TRIGGER_FULL_PULL) {
+        if (button === GamepadButton.LEFT_TRIGGER_FULL_PULL) {
             return (this.triggersAreAxes ? this.gamepad.axes[4] === 1 :
                                            this.gamepad.buttons[6].value === 1);
         }
-        else if (button === GpButton.RIGHT_TRIGGER_FULL_PULL) {
+        else if (button === GamepadButton.RIGHT_TRIGGER_FULL_PULL) {
             return (this.triggersAreAxes ? this.gamepad.axes[5] === 1 :
                                            this.gamepad.buttons[7].value === 1);
         }
@@ -231,10 +270,10 @@ export class GamepadManager {
      * @param [rawValue=false] If true, deadzone is not applied to thumbstick values. Has no effect
      *      on triggers (because they never have deadzone). Defaults to false.
      */
-    axisValue(axis: GpAxis, rawValue: boolean=false): number {
+    axisValue(axis: GamepadAxis, rawValue: boolean=false): number {
         if (this.gamepad === null) { return 0; }
 
-        if (axis === GpAxis.LEFT_TRIGGER) {
+        if (axis === GamepadAxis.LEFT_TRIGGER) {
             if (this.triggersAreAxes) {
                 // TODO: fix bug where trigger values are initially 0.5 until updated
                 // map value to between 0 and 1
@@ -245,7 +284,7 @@ export class GamepadManager {
                 return this.gamepad.buttons[6].value;
             }
         }
-        else if (axis === GpAxis.RIGHT_TRIGGER) {
+        else if (axis === GamepadAxis.RIGHT_TRIGGER) {
             if (this.triggersAreAxes) {
                 // map value to between 0 and 1
                 return (this.gamepad.axes[5] + 1) / 2;
@@ -269,17 +308,17 @@ export class GamepadManager {
      * returns a zero vector.
      * @param [rawValue=false] If true, deadzone is not applied to the position. Defaults to false.
      */
-    stickPos(stick: GpThumbstick, rawValue: boolean=false): Vector2D {
-        if (stick === GpThumbstick.LEFT) {
+    stickPos(stick: GamepadThumbstick, rawValue: boolean=false): Vector2D {
+        if (stick === GamepadThumbstick.LEFT) {
             return new Vector2D(
-                this.axisValue(GpAxis.LEFT_STICK_X, rawValue),
-                this.axisValue(GpAxis.LEFT_STICK_Y, rawValue)
+                this.axisValue(GamepadAxis.LEFT_STICK_X, rawValue),
+                this.axisValue(GamepadAxis.LEFT_STICK_Y, rawValue)
             );
         }
         else {
             return new Vector2D(
-                this.axisValue(GpAxis.RIGHT_STICK_X, rawValue),
-                this.axisValue(GpAxis.RIGHT_STICK_Y, rawValue)
+                this.axisValue(GamepadAxis.RIGHT_STICK_X, rawValue),
+                this.axisValue(GamepadAxis.RIGHT_STICK_Y, rawValue)
             );
         }
     }
@@ -288,7 +327,7 @@ export class GamepadManager {
      * Returns a normalized (length 1) vector with the position of a thumbstick. If the gamepad is
      * disconnected, this method always returns a zero vector.
      */
-    stickVector(stick: GpThumbstick): Vector2D {
+    stickVector(stick: GamepadThumbstick): Vector2D {
         return this.stickPos(stick).normalize();
     }
 
@@ -311,12 +350,12 @@ export class InputManager {
     /**
      * All active actions.
      */
-    private actions: {[key: string]: InputAction};
+    private actions: {[key: string]: InputAction} = {};
 
     /**
      * The state of every keyboard key and mouse button
      */
-    private keyStates: {[key: string]: boolean};
+    private keyStates: {[key: string]: boolean} = {};
 
     /**
      * How long press-type inputs can be buffered for, in seconds.
@@ -336,31 +375,68 @@ export class InputManager {
     constructor(canvas: HTMLElement, gamepad: GamepadManager=null) {
         // attach input listeners to the canvas
         canvas.addEventListener("keydown", (event) => {
-            console.log(event.code);
+            // special keys have entries in the key table
+            if (ALTERNATE_KEY_NAMES[event.code] !== undefined) {
+                this.keyStates[ALTERNATE_KEY_NAMES[event.code]] = true;
+            }
+            // the codes for letter keys start with "Key"
+            else if (event.code.startsWith("Key")) {
+                this.keyStates[event.code.slice(3).toLowerCase()] = true;
+            }
+            // the codes for number keys start with "Digit"
+            else if (event.code.startsWith("Digit")) {
+                this.keyStates[event.code.slice(5).toLowerCase()] = true;
+            }
+            // the original code is always still used
+            this.keyStates[event.code.toLowerCase()] = true;
+
+            // prevents any browser-specific things from happening
+            event.preventDefault();
         });
         canvas.addEventListener("keyup", (event) => {
+            // special keys have entries in the key table
+            if (ALTERNATE_KEY_NAMES[event.code] !== undefined) {
+                this.keyStates[ALTERNATE_KEY_NAMES[event.code]] = false;
+            }
+            // the codes for letter keys start with "Key"
+            else if (event.code.startsWith("Key")) {
+                this.keyStates[event.code.slice(3).toLowerCase()] = false;
+            }
+            // the codes for number keys start with "Digit"
+            else if (event.code.startsWith("Digit")) {
+                this.keyStates[event.code.slice(5).toLowerCase()] = false;
+            }
+            // the original code is always still used
+            this.keyStates[event.code.toLowerCase()] = false;
 
+            event.preventDefault();
         });
         canvas.addEventListener("mousedown", (event) => {
             if (event.button === 0) {
                 this.keyStates["left click"] = true;
+                this.keyStates["left mouse"] = true;
             }
             else if (event.button === 1) {
                 this.keyStates["middle click"] = true;
+                this.keyStates["middle mouse"] = true;
             }
             else if (event.button === 2) {
                 this.keyStates["right click"] = true;
+                this.keyStates["right mouse"] = true;
             }
         });
         canvas.addEventListener("mouseup", (event) => {
             if (event.button === 0) {
                 this.keyStates["left click"] = false;
+                this.keyStates["left mouse"] = false;
             }
             else if (event.button === 1) {
                 this.keyStates["middle click"] = false;
+                this.keyStates["middle mouse"] = false;
             }
             else if (event.button === 2) {
                 this.keyStates["right click"] = false;
+                this.keyStates["right mouse"] = false;
             }
         });
 
@@ -405,7 +481,7 @@ export class InputManager {
      *      default action type is `"hold"`,
      */
     addAction({ name, keys=[], buttons=[], type="hold" }: { name: string, keys?: string[],
-              buttons?: (string|GpButton)[], type?: "press"|"hold" }) {
+                buttons?: (string|GamepadButton)[], type?: "press"|"hold" }) {
         // make sure the action has something assigned to it
         if (keys.length === 0 && buttons.length === 0) {
             throw new InvalidArgumentError(
@@ -413,9 +489,27 @@ export class InputManager {
             );
         }
 
+        // keys have to be handled manually because of shift, alt, and control
+        const actionKeys: string[] = [];
+        for (let k of keys) {
+            k = k.toLowerCase();
+            if (k === "shift") {
+                actionKeys.push("left shift", "right shift");
+            }
+            else if (k === "alt") {
+                actionKeys.push("left alt", "right alt");
+            }
+            else if (k === "control") {
+                actionKeys.push("left control", "right control");
+            }
+            else {
+                actionKeys.push(k);
+            }
+        }
+
         const action: InputAction = {
             active: false,
-            keys: keys.map((k) => k.toLowerCase()),
+            keys: actionKeys,
             // convert strings to gamepad buttons
             buttons: buttons.map((b) => typeof b === "string" ? GAMEPAD_BUTTON_LOOKUP[b] : b),
             // we'll set this up a bit later
@@ -433,7 +527,7 @@ export class InputManager {
         else {
             action.update = (pressed: boolean, dt: number) => {
                 if (pressed) {
-                    if (action.bufferDuration >= 0) {
+                    if (action.bufferDuration > 0) {
                         action.bufferDuration -= dt;
                         action.active = true;
                     }
@@ -461,7 +555,7 @@ export class InputManager {
      * does not exist.
      */
     isActive(name: string): boolean {
-        if (Object.hasOwn(this.actions, name)) {
+        if (this.actions.hasOwnProperty(name)) {
             const active = this.actions[name].active;
             // clear the buffers for press inputs to prevent them from activating multiple times
             this.actions[name].bufferDuration = 0;

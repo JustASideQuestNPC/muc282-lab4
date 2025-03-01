@@ -17,57 +17,46 @@ const sketch = (p5: p5) => {
 
         addCanvasListeners({
             canvas: canvas,
-            disableContextMenu: SKETCH_CONFIG.DISABLE_RIGHT_CLICK_MENU,
-            keyPressed: keyPressed,
-            keyReleased: keyReleased,
-            mousePressed: mousePressed,
-            mouseReleased: mouseReleased
+            disableContextMenu: SKETCH_CONFIG.DISABLE_RIGHT_CLICK_MENU
         });
 
         gamepad = new GamepadManager();
         input = new InputManager(document.getElementById(canvas.id()), gamepad);
+
+        // test actions, will be removed later
+        input.addAction({
+            name: "hold action",
+            keys: ["shift", " "],
+            buttons: ["a", "left trigger full pull"]
+        });
+        input.addAction({
+            name: "press action",
+            keys: ["left mouse"],
+            buttons: ["right stick click"],
+            type: "press"
+        });
     };
 
     p5.draw = () => {
         p5.background("#e0e0e0");
 
-        p5.textAlign("left", "top");
-        p5.textSize(16);
         p5.noStroke();
-        p5.fill("#000000");
-        
-        // let buttonText: string = `Gamepad ${gamepad.connected ? "connected" : "disconnected"}\n`;
-        // buttonText += "Buttons:\n";
-        // for (const [i, button] of Object.entries(Input.Gamepad.Button)) {
-        //     if (Number.isNaN(Number(i))) { continue; }
-        //     buttonText += `${button}: ${gamepad.buttonPressed(Number(i))}\n`;
-        // }
-        // p5.text(buttonText, 5, 5);
+        if (input.isActive("hold action")) {
+            p5.fill("#ff0000");
+        }
+        else {
+            p5.fill("#000000");
+        }
+        p5.circle(425, 360, 150);
 
-        // let axisText: string = "\nAxes:\n";
-        // for (const [i, axis] of Object.entries(Input.Gamepad.Axis)) {
-        //     if (Number.isNaN(Number(i))) { continue; }
-        //     axisText += `${axis}: ${gamepad.axisValue(Number(i)).toFixed(3)}\n`;
-        //     // add non-deadzone entries for stick axes
-        //     if (Number(i) < 4) {
-        //         axisText += `${axis} raw: ${gamepad.axisValue(Number(i), true).toFixed(3)}\n`;
-        //     }
-        // }
-        // p5.text(axisText, 300, 5);
+        if (input.isActive("press action")) {
+            p5.fill("#ff0000");
+        }
+        else {
+            p5.fill("#000000");
+        }
+        p5.circle(850, 360, 150);
     };
-
-    function keyPressed(event: KeyboardEvent) {
-        console.log(`Pressed ${event}`);
-    }
-
-    function keyReleased(event: KeyboardEvent) {
-    }
-
-    function mousePressed(event: MouseEvent) {
-    }
-    
-    function mouseReleased(event: MouseEvent) {
-    }
 };
 
 // error checks need to be disabled here because otherwise typescript explodes for some reason
